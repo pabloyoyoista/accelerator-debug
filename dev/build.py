@@ -4,7 +4,7 @@ from accelerator.colour import bold
 
 def main(urd):
     fns = sorted(glob.glob(join(urd.info.input_directory, "*.csv")))
-    job_prev = None
+    job_import_log = job_parse_log = None
 
     for fn in fns:
         base_fn = basename(fn)
@@ -13,26 +13,18 @@ def main(urd):
             'csvimport',
             filename=fn,
             comment='#',
-            labelsonfirstline=False,
             labels=['data'],
-            separator=';', # This is on purpose, the imports gives a single col
-            previous=job_prev,
+            separator='',
+            previous=job_import_log,
         )
         job_parse_log = urd.build(
-            'log_parser', source=job_import_log, previous=job_prev
+            'log_parser', source=job_import_log, previous=job_parse_log
         )
-        job_sort_log = urd.build(
-            'dataset_sort',
-            source=job_parse_log,
-            sort_columns='time',
-            sort_across_slices=True,
-            previous=job_prev,
-        )
-        job_prev = job_sort_log
+        job_unroundrobin = urd.build('dataset_unroundrobin', source=job_parse_log)
         job_export_new_csv = urd.build(
             'csvexport',
             filename=f'{base_fn}',
-            source=job_sort_log,
+            source=job_unroundrobin,
             separator=';',
             labelsonfirstline=True,
             labels=['time', 'value'],
